@@ -1,0 +1,8 @@
+0: process 273 received all STARTED messages
+1: process 43515 (pid 43514, parent 35458048) has STARTED with balance $ 0
+2: process 43516 (pid 43514, parent 35458048) has STARTED with balance $ 0
+0: process 273 received all DONE messages
+2: process 273 received all STARTED messages
+1: process 273 received all STARTED messages
+2: process 273 received all DONE messages
+1: process 273 received all DONE messages
