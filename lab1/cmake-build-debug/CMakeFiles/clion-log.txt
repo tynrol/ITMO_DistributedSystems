@@ -1,0 +1,1 @@
+CMakeLists.txt not found in /home/tynrol/Code/CLionProjects/distributed_labs/lab1 Select CMakeLists.txt
