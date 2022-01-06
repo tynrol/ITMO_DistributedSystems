@@ -27,12 +27,14 @@ int receive(void * self, local_id from, Message * msg){
     if(read(mesh->pipes[mesh->current_id][from]->fdRead, &messageHeader,sizeof(MessageHeader)) == -1){
         return 1;
     } else {
-        char buffer[messageHeader.s_payload_len];
+        char buffer[4096];
         if (read(mesh->pipes[mesh->current_id][from]->fdRead, &buffer, messageHeader.s_payload_len) == -1) {
             return 1;
         }
         msg->s_header=messageHeader;
-        memcpy(msg->s_payload, buffer, sizeof(msg));
+//        printf("receive buf %s\n", buffer);
+        strcpy(msg->s_payload, buffer);
+//        printf("receive msg %s\n", msg->s_payload);
     }
 
 

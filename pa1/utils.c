@@ -18,7 +18,9 @@ Message createMessage(uint16_t magic, local_id id, MessageType type, timestamp_t
     }
     messageHeader = createMessageHeader(magic, strlen(buf), type, time);
     message.s_header = messageHeader;
+//    printf("create buf %s\n", buf);
     strcpy(message.s_payload, buf);
+//    printf("create msg %s\n", buf);
     return message;
 }
 

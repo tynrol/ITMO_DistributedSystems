@@ -1,10 +1,10 @@
-Process 1 (pid 27455, parent 27454) has STARTED
-Process 2 (pid 27456, parent 27454) has STARTED
+Process 1 (pid 30633, parent 30632) has STARTED
+Process 2 (pid 30634, parent 30632) has STARTED
+Process 1 received all STARTED messages
 Process 2 received all STARTED messages
+Process 1 has DONE its work
 Process 2 has DONE its work
 Process 0 received all STARTED messages
-Process 1 received all STARTED messages
-Process 1 has DONE its work
+Process 2 received all DONE messages
 Process 1 received all DONE messages
 Process 0 received all DONE messages
-Process 2 received all DONE messages

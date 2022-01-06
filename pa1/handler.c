@@ -40,7 +40,7 @@ void openPipes(){
 void closePipes(){
     for(int i = 0; i<mesh->process_count; i++){
         for(int j = 0; j<mesh->process_count; j++){
-            if(i!=j){
+            if(i!=j & i!=mesh->current_id){
                 close(mesh->pipes[i][j]->fdRead);
                 close(mesh->pipes[i][j]->fdWrite);
 //                logPipe(CLOSED, mesh->current_id);
@@ -82,6 +82,7 @@ void forkProcesses(){
 }
 
 void work(ForkStatus status){
+    closePipes();
     if(status==CHILD) {
         waitEvent(EVENT_STARTED);
 //        work
@@ -130,6 +131,7 @@ void waitEvent(EventStatus status){
             break;
         case EVENT_RECV_ALL_STARTED:
             receive_any(mesh, &msg);
+//            printf("handler switch %s\n", msg.s_payload);
             logEvent(EVENT_RECV_ALL_STARTED, mesh->current_id);
             break;
         case EVENT_RECV_ALL_DONE:

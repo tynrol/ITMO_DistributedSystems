@@ -36,7 +36,6 @@ char* logEvent(EventStatus status, local_id id){
 
     printf(buf,0);
     write(fdEventsLog, buf, strlen(buf));
-    memset(buf, 0, 255);
     return buf;
 }
 
