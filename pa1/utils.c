@@ -3,20 +3,22 @@
 Message createMessage(uint16_t magic, local_id id, MessageType type, timestamp_t time){
     Message message;
     MessageHeader messageHeader;
-    uint16_t len;
+    char *buf;
+
     switch (type) {
         case DONE:
-            len = logEvent(EVENT_DONE, id);
+            buf = logEvent(EVENT_DONE, id);
             break;
         case STARTED:
-            len = logEvent(EVENT_STARTED, id);
+            buf = logEvent(EVENT_STARTED, id);
             break;
         default:
-            len = 0;
+            buf = "";
             break;
     }
-    messageHeader = createMessageHeader(magic, len, type, time);
+    messageHeader = createMessageHeader(magic, strlen(buf), type, time);
     message.s_header = messageHeader;
+    strcpy(message.s_payload, buf);
     return message;
 }
 

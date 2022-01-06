@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "pa1.h"
 #include "common.h"
 #include "ipc.h"
@@ -25,5 +26,5 @@ void openLogPipe();
 void closeLogEvent();
 void closeLogPipe();
 
-int logEvent(EventStatus status, local_id id);
+char* logEvent(EventStatus status, local_id id);
 //void logPipe(PipeStatus status, local_id id, int from, int to, int descriptor);

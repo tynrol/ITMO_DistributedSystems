@@ -16,8 +16,8 @@ void closeLogPipe(){
     close(fdPipesLog);
 }
 
-int logEvent(EventStatus status, local_id id){
-    char buf[255];
+char* logEvent(EventStatus status, local_id id){
+    char *buf = (char *)malloc(sizeof (char) * 255);
 
     switch(status) {
         case EVENT_STARTED:
@@ -37,7 +37,7 @@ int logEvent(EventStatus status, local_id id){
     printf(buf,0);
     write(fdEventsLog, buf, strlen(buf));
     memset(buf, 0, 255);
-    return strlen(buf);
+    return buf;
 }
 
 //void logPipe(PipeStatus status, local_id id, int from, int to, int descriptor){
