@@ -20,6 +20,8 @@ void closePipes();
 void closeUnusedPipes();
 void forkProcesses();
 void work(ForkStatus status);
+void serve();
+void handleTransfer();
 void waitEvent(EventStatus status);
 
 

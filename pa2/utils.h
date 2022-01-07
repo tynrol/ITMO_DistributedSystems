@@ -7,7 +7,7 @@
 #include <sys/io.h>
 #include <string.h>
 #include <fcntl.h>
-#include "banking.h"
+#include <errno.h>
 #include "log.h"
 
 #define MAX_PROCESS_COUNT 11
@@ -24,5 +24,6 @@ typedef struct{
     PipeChannel *pipes[MAX_PROCESS_COUNT][MAX_PROCESS_COUNT];
 } Mesh;
 
-Message createMessage(uint16_t magic, local_id id, MessageType type, timestamp_t time);
+Message createMessage(uint16_t magic, local_id id, balance_t balance, MessageType type, timestamp_t time);
 MessageHeader createMessageHeader(uint16_t magic, uint16_t len, int16_t type, timestamp_t time);
+TransferOrder createTransferOrder(local_id src, local_id dst, balance_t balance);

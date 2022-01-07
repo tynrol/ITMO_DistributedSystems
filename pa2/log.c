@@ -3,38 +3,50 @@
 int fdEventsLog;
 int fdPipesLog;
 
-void openLogEvent(){
+void openLogEvent() {
     fdEventsLog = open(events_log, O_WRONLY | O_APPEND | O_CREAT | O_TRUNC, 0760);
 }
-void openLogPipe(){
+
+void openLogPipe() {
     fdPipesLog = open(pipes_log, O_WRONLY | O_APPEND | O_CREAT | O_TRUNC, 0760);
 }
-void closeLogEvent(){
+
+void closeLogEvent() {
     close(fdEventsLog);
 }
-void closeLogPipe(){
+
+void closeLogPipe() {
     close(fdPipesLog);
 }
 
-char* logEvent(EventStatus status, local_id id){
-    char *buf = (char *)malloc(sizeof (char) * 255);
+char *logEvent(EventStatus status, local_id id, balance_t balance, timestamp_t timestamp, local_id foreign_id) {
+    char *buf = (char *) malloc(sizeof(char) * 255);
 
-    switch(status) {
+    switch (status) {
         case EVENT_STARTED:
-            sprintf(buf, log_started_fmt, id, getpid(), getppid());
+            sprintf(buf, log_started_fmt, timestamp, id, getpid(), getppid(), balance);
             break;
         case EVENT_RECV_ALL_STARTED:
-            sprintf(buf, log_received_all_started_fmt, id);
+            sprintf(buf, log_received_all_started_fmt, timestamp, id);
             break;
         case EVENT_DONE:
-            sprintf(buf, log_done_fmt, id);
+            sprintf(buf, log_done_fmt, timestamp, id, balance);
             break;
         case EVENT_RECV_ALL_DONE:
-            sprintf(buf, log_received_all_done_fmt, id);
+            sprintf(buf, log_received_all_done_fmt, timestamp, id);
+            break;
+        case EVENT_TRANSFER_IN:
+            sprintf(buf, log_transfer_in_fmt, timestamp, id, balance, foreign_id);
+            break;
+        case EVENT_TRANSFER_OUT:
+            sprintf(buf, log_transfer_out_fmt, timestamp, id, balance, foreign_id);
+            break;
+        case EVENT_STOP:
+            printf("%d: process %d requested stop\n", timestamp, id);
             break;
     }
 
-    printf(buf,0);
+    printf(buf, 0);
     write(fdEventsLog, buf, strlen(buf));
     return buf;
 }
