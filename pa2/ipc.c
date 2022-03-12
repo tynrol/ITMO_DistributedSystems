@@ -55,7 +55,7 @@ int receive(void *self, local_id from, Message *msg) {
                     msg->s_header = messageHeader;
                     //TODO: MEMCPY TO TRANSFER ORDER
                     strcpy(msg->s_payload, buffer);
-                    return 0;    
+                    return 0;
                 }
             } else {
                 msg->s_header = messageHeader;

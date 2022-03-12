@@ -6,6 +6,7 @@ void transfer(void * parent_data, local_id src, local_id dst, balance_t amount) 
     TransferOrder order = createTransferOrder(src, dst, amount);
     Message message;
     Message *receiveMsg = (Message *)malloc(sizeof(Message));
+    receiveMsg->s_header.s_type = CS_REQUEST;
     MessageHeader header;
 
     header.s_magic = MESSAGE_MAGIC;
@@ -16,12 +17,10 @@ void transfer(void * parent_data, local_id src, local_id dst, balance_t amount) 
     message.s_header = header;
     memcpy(message.s_payload, &order, sizeof(TransferOrder));
     send(mesh, src, &message);
-    int value;
-    while(value != 0){
-        value = receive(mesh, dst, receiveMsg);
-        printf("SSSSSSSSS %d", value);
+    receive(mesh, dst, receiveMsg);
+    while(receiveMsg->s_header.s_type != ACK) {
+        receive(mesh, dst, receiveMsg);
     }
-    // while(receive(mesh, dst, receiveMsg)!=0 && (receiveMsg->s_header.s_type != ACK)){}
 }
 
 int main(int argc, char * argv[]){
@@ -33,7 +32,6 @@ int main(int argc, char * argv[]){
         switch(c){
             case 'p':
                 process_count = atoi(optarg);
-                printf("START PROCESS_COUNT %d\n", process_count);
                 break;
             default:
                 break;

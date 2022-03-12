@@ -28,8 +28,6 @@ Message createMessage(uint16_t magic, local_id id, balance_t balance, MessageTyp
         case ACK: 
             messageHeader = createMessageHeader(magic, 0, type, time);
             message.s_header = messageHeader;
-            // strcpy(message.s_payload, "");
-            printf("CREATED ACK, %d, %d\n", id, message.s_header.s_type);
             return message;  
         default:
             break;

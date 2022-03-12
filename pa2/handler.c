@@ -6,7 +6,6 @@ Mesh *mesh;
 void process(int process_count, balance_t balance[]) {
     openLogEvent();
     openLogPipe();
-    printf("PHYSICAL TIME %d\n", get_physical_time());
     initMesh(process_count + 1, balance);
     forkProcesses();
 }
@@ -20,7 +19,6 @@ void initMesh(int process_count, balance_t balance[]) {
         state->s_balance = balance[i];
         state->s_balance_pending_in = 0;
         state->s_time = get_physical_time();
-//        printf("CHECK STATE %d, %d, %d\n", i, state->s_balance, state->s_time);
         mesh->balanceStates[i] = state;
         for (int j = 0; j < mesh->process_count; j++) {
             if (i != j) {
@@ -34,7 +32,6 @@ void initMesh(int process_count, balance_t balance[]) {
 void openPipes() {
     int fdPipes[2];
     for (int i = 0; i < mesh->process_count; i++) {
-//        printf("CHECK MESH %d, %d, %d\n", i, mesh->balanceStates[i]->s_balance, mesh->balanceStates[i]->s_time);
         for (int j = 0; j < mesh->process_count; j++) {
             if (i != j) {
                 pipe(fdPipes);
@@ -42,7 +39,6 @@ void openPipes() {
                     exit(2);
                 mesh->pipes[j][i]->fdRead = fdPipes[0];
                 mesh->pipes[i][j]->fdWrite = fdPipes[1];
-//                logPipe(OPEN, mesh->current_id);
             }
         }
     }
@@ -54,7 +50,6 @@ void closePipes() {
             if (i != j && i != mesh->current_id) {
                 close(mesh->pipes[i][j]->fdRead);
                 close(mesh->pipes[i][j]->fdWrite);
-//                logPipe(CLOSED, mesh->current_id);
             }
         }
     }
@@ -65,7 +60,6 @@ void closeLinePipes() {
         if (i != mesh->current_id) {
             close(mesh->pipes[mesh->current_id][i]->fdRead);
             close(mesh->pipes[mesh->current_id][i]->fdWrite);
-//            logPipe(CLOSED, mesh->current_id);
         }
     }
 }
@@ -98,15 +92,12 @@ void work(ForkStatus status) {
         waitEvent(EVENT_STARTED);
         serve();
         waitEvent(EVENT_RECV_ALL_DONE);
-        closeLinePipes();
+        closeLinePipes();        
     } else if (status == PARENT) {
         waitEvent(EVENT_RECV_ALL_STARTED);
         
-        // bank_robbery(mesh, mesh->process_count-1);
         transfer(mesh, 2, 1, 5);
 
-        //send stop
-        sleep(5);
         Message message = createMessage(MESSAGE_MAGIC, mesh->current_id, mesh->balanceStates[mesh->current_id]->s_balance, STOP, get_physical_time());
         if (send_multicast(mesh, &message) != 0) {
             printf("Cannot send multicast stop\n");
@@ -114,11 +105,9 @@ void work(ForkStatus status) {
         }
 
         waitEvent(EVENT_RECV_ALL_DONE);
-        //history
         int value = 666;
         while (value > 0) {
             value = wait(NULL);
-            // printf("Not everything is closed %d\n", value);
         }
         closePipes();
         closeLogEvent();
@@ -176,7 +165,6 @@ void waitEvent(EventStatus status) {
             flag = 0;
             for (local_id i = 0; i < mesh->process_count; i++) {
                 if (i != mesh->current_id) {
-//                    printf("COUNT %d, %d\n", i, mesh->process_count);
                     if (receive(mesh, i, msg) != 0) {
                         flag = 1;
                     }
@@ -200,31 +188,20 @@ void serve() {
         for (local_id i = 0; i < mesh->process_count; i++) {
             if (i != mesh->current_id) {
                 int value = receive(mesh, i, msg);
-                if(value!=0) {
-                    // exit = 1;
-                    // printf("SHUYALI %d\n", value);
-                }
-                
-                fflush(stdout);
                 switch (msg->s_header.s_type) {
                     case TRANSFER:
-                        // printf("RECEIVED TRANSFER \n");
-                        fflush(stdout);
                         handleTransfer(msg);
                         break;
                     case STOP:
-                        // printf("RECEIVED STOP\n");
-//                      TODO: SEND HISTORY TO PARENT
                         exit = 1;
-                        break;
+                        return;
                     default:
-                        // printf("DEFAULT STATUS %d\n", msg->s_header.s_type);
-                        continue;
+                        break;
                 }
             }
+
         }
     }
-    // printf("SERVING ENDED\n");
 }
 
 void handleTransfer(Message *message) {
@@ -241,7 +218,8 @@ void handleTransfer(Message *message) {
         mesh->balanceStates[mesh->current_id] += order.s_amount;
         mesh->balanceStates[mesh->current_id]->s_time = get_physical_time();
         Message msg = createMessage(MESSAGE_MAGIC, mesh->current_id, order.s_amount, ACK, get_physical_time());
-        send(mesh, 0, &msg);
+        int value;
+        value = send(mesh, 0, &msg);
         logEvent(EVENT_TRANSFER_IN, order.s_dst, order.s_amount, get_physical_time(), order.s_src);
     } else {
         printf("WRONG CLIENT\n");
