@@ -76,8 +76,6 @@ void forkProcesses() {
             case 0:
                 mesh->current_id = i;
                 work(CHILD);
-                exit(0);
-                break;
             default:
                 break;
         }
@@ -89,139 +87,140 @@ void forkProcesses() {
 void work(ForkStatus status) {
     closePipes();
     if (status == CHILD) {
-        waitEvent(EVENT_STARTED);
-        serve();
-        waitEvent(EVENT_RECV_ALL_DONE);
-        closeLinePipes();        
+        start();
+        childServe();
+        end();
+
+        closeLinePipes();
+        exit(0);
     } else if (status == PARENT) {
-        waitEvent(EVENT_RECV_ALL_STARTED);
-        
-        transfer(mesh, 2, 1, 5);
+        start();
+        parentServe();
 
-        Message message = createMessage(MESSAGE_MAGIC, mesh->current_id, mesh->balanceStates[mesh->current_id]->s_balance, STOP, get_physical_time());
-        if (send_multicast(mesh, &message) != 0) {
-            printf("Cannot send multicast stop\n");
-            exit(1);
-        }
-
-        waitEvent(EVENT_RECV_ALL_DONE);
         int value = 666;
         while (value > 0) {
             value = wait(NULL);
         }
+
         closePipes();
         closeLogEvent();
         closeLogPipe();
+
         exit(0);
     } else {
         printf("Wrong process status");
-        exit(1);
+        exit(3);
     }
 }
 
-void waitEvent(EventStatus status) {
-    Message *msg = (Message *) malloc(sizeof(Message));
-    Message send;
-    int flag;
-    timestamp_t time_t = get_physical_time();
-    switch (status) {
-        case EVENT_STARTED:
-            send = createMessage(MESSAGE_MAGIC, mesh->current_id, mesh->balanceStates[mesh->current_id]->s_balance, STARTED, time_t);
-            if (send_multicast(mesh, &send) != 0) {
-                printf("Cant send multicast");
-                exit(1);
+void start() {
+    Message started = createMessage(MESSAGE_MAGIC,
+                                    mesh->current_id,
+                                    0,
+                                    mesh->balanceStates[mesh->current_id]->s_balance,
+                                    STARTED,
+                                    get_physical_time());
+//    this shit doesnt have to send to host, why dont i have separate functions
+//    send_multicast(mesh, started);
+//    literally have to copy
+    for (local_id i = 1; i < mesh->process_count; i++) {
+        if (i != mesh->current_id) {
+            if (send(mesh, i, &started) != 0) {
+                printf("Cant send start message to other children\n");
+                exit(4);
             }
-            receive_any(mesh, msg);
-            logEvent(EVENT_RECV_ALL_STARTED, mesh->current_id, mesh->balanceStates[mesh->current_id]->s_balance, time_t,
-                     0);
-            break;
-        case EVENT_DONE:
-            send = createMessage(MESSAGE_MAGIC, mesh->current_id, mesh->balanceStates[mesh->current_id]->s_balance, DONE, time_t);
-            if (send_multicast(mesh, &send) != 0) {
-                printf("Cant send multicast");
-                exit(1);
-            }
-            receive_any(mesh, msg);
-            logEvent(EVENT_RECV_ALL_DONE, mesh->current_id, mesh->balanceStates[mesh->current_id]->s_balance, time_t,
-                     0);
-            break;
-        case EVENT_RECV_ALL_STARTED:
-            flag = 0;
-            for (local_id i = 0; i < mesh->process_count; i++) {
-                if (i != mesh->current_id) {
-                    if (receive(mesh, i, msg) != 0) {
-                        flag = 1;
-                    }
-                    if (msg->s_header.s_type != STARTED) {
-                        flag = 1;
-                    }
-                }
-            }
+        }
+    }
 
-            logEvent(EVENT_RECV_ALL_STARTED, mesh->current_id, mesh->balanceStates[mesh->current_id]->s_balance, time_t,
-                     0);
-            break;
-        case EVENT_RECV_ALL_DONE:
-            flag = 0;
-            for (local_id i = 0; i < mesh->process_count; i++) {
-                if (i != mesh->current_id) {
-                    if (receive(mesh, i, msg) != 0) {
-                        flag = 1;
-                    }
-                    if (msg->s_header.s_type != DONE) {
-                        flag = 1;
-                    }
-                }
+    Message recv;
+    for (local_id i = 1; i<mesh->process_count; i++) {
+        if (i != mesh->current_id) {
+            if (receive(mesh, i, &recv) == 0 && recv.s_header.s_type != STARTED) {
+                printf("Wrong message received by host on start\n");
+                exit(2);
             }
-            logEvent(EVENT_RECV_ALL_DONE, mesh->current_id, mesh->balanceStates[mesh->current_id]->s_balance, time_t,
-                     0);
-            break;
-        default:
-            break;
+        }
+    }
+
+    if (mesh->current_id == 0) {
+        logEvent(EVENT_RECV_ALL_STARTED, 0, 0, get_physical_time(), 0);
+    } else {
+        send(mesh, 0, &started);
+//        already started in create start message dont remember if all started needed
+        logEvent(EVENT_RECV_ALL_STARTED, mesh->current_id, mesh->balanceStates[mesh->current_id]->s_balance, get_physical_time(),0);
     }
 }
 
-void serve() {
-    Message *msg = (Message *) malloc(sizeof(Message));
+void end() {
+    Message stopped = createMessage(MESSAGE_MAGIC,
+                                    mesh->current_id,
+                                    0,
+                                    mesh->balanceStates[mesh->current_id]->s_balance,
+                                    STOP,
+                                    get_physical_time());
+    send_multicast(mesh, &stopped);
+
+    Message recv;
+    for (local_id i = 1; i<mesh->process_count; i++) {
+        if (i != mesh->current_id) {
+            int value = receive(mesh, i, &recv) == 0;
+            if (value == 0 && recv.s_header.s_type != STOP) {
+//                printf("%d: host process %d received type %d\n", get_physical_time(), mesh->current_id, recv.s_header.s_type);
+                i--;
+            }
+        }
+    }
+
+    if (mesh->current_id == 0) {
+        logEvent(EVENT_RECV_ALL_DONE, 0, 0, get_physical_time(), 0);
+    } else {
+        //        already started in create start message dont remember if all started needed
+        logEvent(EVENT_RECV_ALL_DONE, mesh->current_id, mesh->balanceStates[mesh->current_id]->s_balance, get_physical_time(),0);
+        send(mesh, 0, &stopped);
+    }
+
+    // TODO write to a history whatever
+}
+
+
+void childServe() {
+    Message ack;
+    Message recv;
+    TransferOrder order;
     int exit = 0;
-    while (exit != 1) {
-        for (local_id i = 0; i < mesh->process_count; i++) {
-            if (i != mesh->current_id) {
-                int value = receive(mesh, i, msg);
-                switch (msg->s_header.s_type) {
-                    case TRANSFER:
-                        handleTransfer(msg);
-                        break;
-                    case STOP:
-                        exit = 1;
-                        return;
-                    default:
-                        break;
-                }
+    int value;
+    while(exit == 0) {
+        while ((value = receive_any(mesh, &recv)) == -1) {
+            if (value == 0)
+            switch (recv.s_header.s_type) {
+                case STOP:
+                    // TODO add to history
+                    exit = -1;
+                    break;
+                case TRANSFER:
+                    memcpy(&order, recv.s_payload, sizeof(TransferOrder));
+                    if (order.s_dst == mesh->current_id) {
+                        // TODO add to history
+                        logEvent(EVENT_TRANSFER_IN, order.s_dst, order.s_amount, get_physical_time(), order.s_src);
+                        mesh->balanceStates[mesh->current_id] += order.s_amount;
+                        ack = createMessage(MESSAGE_MAGIC, 0, 0, 0, ACK, get_physical_time());
+                        send(mesh, 0, &ack);
+                    } else if (order.s_src == mesh->current_id) {
+                        // TODO add to history
+                        logEvent(EVENT_TRANSFER_OUT, order.s_src, order.s_amount, get_physical_time(), order.s_dst);
+                        mesh->balanceStates[mesh->current_id] -= order.s_amount;
+                        ack = createMessage(MESSAGE_MAGIC, 0, 0, 0, ACK, get_physical_time());
+                        send(mesh, 0, &ack);
+                    }
+                    break;
+//            default:
+//                printf("%d: process %d received type %d\n", get_physical_time(), mesh->current_id, recv.s_header.s_type);
             }
-
         }
     }
 }
 
-void handleTransfer(Message *message) {
-    TransferOrder order;
-    memcpy(&order, message->s_payload, sizeof(TransferOrder));
-    // printf("--------2------ %d, %d, %d, %d\n",mesh->current_id, order.s_src, order.s_dst, order.s_amount);
-
-    if (mesh->current_id == order.s_src) {
-        mesh->balanceStates[mesh->current_id]->s_balance -= order.s_amount;
-        mesh->balanceStates[mesh->current_id]->s_time = get_physical_time();
-        send(mesh, order.s_dst, message);
-        logEvent(EVENT_TRANSFER_OUT, order.s_src, order.s_amount, get_physical_time(), order.s_dst);
-    } else if (mesh->current_id == order.s_dst) {
-        mesh->balanceStates[mesh->current_id] += order.s_amount;
-        mesh->balanceStates[mesh->current_id]->s_time = get_physical_time();
-        Message msg = createMessage(MESSAGE_MAGIC, mesh->current_id, order.s_amount, ACK, get_physical_time());
-        int value;
-        value = send(mesh, 0, &msg);
-        logEvent(EVENT_TRANSFER_IN, order.s_dst, order.s_amount, get_physical_time(), order.s_src);
-    } else {
-        printf("WRONG CLIENT\n");
-    }    
+void parentServe() {
+    bank_robbery(mesh, mesh->process_count-1);
+//    end();
 }

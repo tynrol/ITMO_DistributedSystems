@@ -2,24 +2,13 @@
 #include "handler.h"
 
 void transfer(void * parent_data, local_id src, local_id dst, balance_t amount) {
+    printf("Transfer from %d to %d $%d\n", src, dst, amount);
     Mesh *mesh = (Mesh *)parent_data;
-    TransferOrder order = createTransferOrder(src, dst, amount);
-    Message message;
-    Message *receiveMsg = (Message *)malloc(sizeof(Message));
-    receiveMsg->s_header.s_type = CS_REQUEST;
-    MessageHeader header;
-
-    header.s_magic = MESSAGE_MAGIC;
-    header.s_type = TRANSFER;
-    header.s_local_time = get_physical_time();
-    header.s_payload_len = sizeof(TransferOrder);
-
-    message.s_header = header;
-    memcpy(message.s_payload, &order, sizeof(TransferOrder));
+    Message message = createMessage(MESSAGE_MAGIC, src,dst,amount,TRANSFER,get_physical_time());
+    Message recv;
     send(mesh, src, &message);
-    receive(mesh, dst, receiveMsg);
-    while(receiveMsg->s_header.s_type != ACK) {
-        receive(mesh, dst, receiveMsg);
+    while(receive(mesh, dst, &recv) != 0 && recv.s_header.s_type != ACK) {
+        receive(mesh, dst, &recv);
     }
 }
 
