@@ -1,5 +1,6 @@
 #include "pipes.h"
 
+#define max_processes 10
 PipeChannel pipes[max_processes][max_processes];
 
 void openPipes(){
@@ -22,8 +23,10 @@ void openPipes(){
                 if(value < 0) {
                     logPipe(PIPE_FAIL_NONBLOCK, i, j, 0, get_lamport_time());
                     exit(-2);
+
                 }
                 logPipe(PIPE_STARTED, i, j, 0, get_lamport_time());
+
             }
         }
     }

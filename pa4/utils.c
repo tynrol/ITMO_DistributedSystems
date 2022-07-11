@@ -1,8 +1,9 @@
-#include "utils.h"
+#include "ipc.h"
+#include "pipes.h"
 
 timestamp_t time_clock = 0;
 
-timestamp_t get_lamport_time(){
+timestamp_t get_lamport_time() {
     return ++time_clock;
 }
 
@@ -12,26 +13,35 @@ void update_time(timestamp_t time) {
     get_lamport_time();
 }
 
-void transaction_in(timestamp_t time, balance_t amount, local_id from) {
-    current_amount += amount;
-    addToHistory(time, current_amount, 0);
-    fprintf(EventsLog, log_transfer_in_fmt, time, id, amount, from);
-}
-
-void transaction_out(timestamp_t time, balance_t amount, local_id to) {
-    current_amount -= amount;
-    addToHistory(time, current_amount, 0);
-    fprintf(EventsLog, log_transfer_in_fmt, time, to, amount, id);
-}
-
-int receive_all(Message *msg, local_id src, local_id dst) {
-    int error;
-    while (1) {
-        error = receive(&dst, src, msg);
-        if (error != 1)
-            return error;
+int receive_with_time(void * self, local_id from, Message * msg) {
+    int i = receive(self, from, msg);
+    if(i == 0) {
+        update_time(msg->s_header.s_local_time);
+        get_lamport_time();
     }
+    return i;
 }
+
+local_id get(Message *received) {
+    for (local_id i = 1; i <= process_count; i++) {
+        if (i != id && receive_with_time(&id, i, received) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+//void transaction_in(timestamp_t time, balance_t amount, local_id from) {
+//    current += amount;
+//    addToHistory(time, current, 0);
+//    fprintf(EventsLog, log_transfer_in_fmt, time, id, amount, from);
+//}
+//
+//void transaction_out(timestamp_t time, balance_t amount, local_id to) {
+//    current -= amount;
+//    addToHistory(time, current, 0);
+//    fprintf(EventsLog, log_transfer_in_fmt, time, to, amount, id);
+//}
 
 Message createMessage(uint16_t magic, local_id src, local_id dst, balance_t balance, MessageType type){
     Message message;
@@ -51,12 +61,12 @@ Message createMessage(uint16_t magic, local_id src, local_id dst, balance_t bala
             message.s_header = messageHeader;
             strcpy(message.s_payload, buf);
             return message;
-        case TRANSFER:
-            messageHeader = createMessageHeader(magic, sizeof(TransferOrder), type, time);
-            message.s_header = messageHeader;
-            TransferOrder order = createTransferOrder(src, dst, balance);
-            memcpy(message.s_payload, &order, sizeof(TransferOrder));
-            return message;
+//        case TRANSFER:
+//            messageHeader = createMessageHeader(magic, sizeof(TransferOrder), type, time);
+//            message.s_header = messageHeader;
+//            TransferOrder order = createTransferOrder(src, dst, balance);
+//            memcpy(message.s_payload, &order, sizeof(TransferOrder));
+//            return message;
         case BALANCE_HISTORY:
             //no need to give more params
             messageHeader = createMessageHeader(magic, 0, type, time);
@@ -77,20 +87,3 @@ MessageHeader createMessageHeader(uint16_t magic, uint16_t len, int16_t type, ti
     header.s_local_time = time;
     return header;
 }
-
-TransferOrder createTransferOrder(local_id src, local_id dst, balance_t balance){
-    TransferOrder order;
-    order.s_src = src;
-    order.s_dst = dst;
-    order.s_amount = balance;
-    return order;
-}
-
-BalanceState createBalanceState(balance_t s_balance, timestamp_t s_time, balance_t s_balance_pending_in){
-    BalanceState state;
-    state.s_balance = s_balance;
-    state.s_time = s_time;
-    state.s_balance_pending_in = s_balance_pending_in;
-    return state;
-}
-

@@ -7,12 +7,12 @@
 void transfer(void *parent_data, local_id src, local_id dst, balance_t amount) {
     Message message = createMessage(MESSAGE_MAGIC, src, dst, amount,TRANSFER);
     send(&id, src, &message);
-
     receive_all(&message, dst, id);
     if (message.s_header.s_type != ACK) {
         exit(-1);
-    }else{
-        logEvent(LOG_ACK, src, dst, amount);
+    } else {
+        update_time(message.s_header.s_local_time);
+        logEvent(LOG_ACK, src, dst, amount, message.s_header.s_local_time);
     }
 }
 

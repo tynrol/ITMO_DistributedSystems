@@ -1,23 +1,11 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <getopt.h>
 #include "banking.h"
+#include <stdio.h>
+#include "pipes.h"
+#include <string.h>
+#include <stdlib.h>
+#include <getopt.h>
 #include "handler.h"
 
-
-
-
-void transfer(void *parent_data, local_id src, local_id dst, balance_t amount) {
-    Message message = createMessage(MESSAGE_MAGIC, src, dst, amount,TRANSFER);
-    send(&id, src, &message);
-    receive_all(&message, dst, id);
-    if (message.s_header.s_type != ACK) {
-        exit(-1);
-    } else {
-        update_time(message.s_header.s_local_time);
-        logEvent(LOG_ACK, src, dst, amount, message.s_header.s_local_time);
-    }
-}
 
 int main(int argc, char *argv[]) {
     const char* short_options = "p:";

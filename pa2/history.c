@@ -12,12 +12,12 @@ void initHistory() {
     last_state_time = 1;
 }
 
-void addToHistory(timestamp_t time, balance_t amount, balance_t pending) {
+void addToHistory(timestamp_t time, balance_t amount) {
     for (timestamp_t i = last_state_time; i < time; i++) {
         BalanceState state = createBalanceState(balanceHistory.s_history[i - 1].s_balance, i, 0);
         balanceHistory.s_history[i] = state;
     }
-    BalanceState new_state = createBalanceState(amount, time, pending);
+    BalanceState new_state = createBalanceState(amount, time, 0);
     balanceHistory.s_history[time] = new_state;
     balanceHistory.s_history_len = time + 1;
     last_state_time = (timestamp_t) (time + 1);
@@ -42,7 +42,7 @@ void showHistory() {
         for (local_id i = 1; i <= process_count; i++) {
             receive_all(&received, i, id);
             if(received.s_header.s_type == BALANCE_HISTORY){
-                logEvent(LOG_COPIED, id, id_parent, current_amount, received.s_header.s_local_time);
+                logEvent(LOG_COPIED, id, id_parent, current_amount);
                 memcpy(allHistory.s_history + allHistory.s_history_len, received.s_payload, sizeof(BalanceHistory));
                 allHistory.s_history_len++;
             }

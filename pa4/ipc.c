@@ -1,8 +1,14 @@
+//
+// Created by diy on 20.09.2021.
+//
 #include <malloc.h>
 #include <errno.h>
 #include "ipc.h"
-#include "handler.h"
 #include "pipes.h"
+#include "handler.h"
+
+
+
 
 int send(void *self, local_id dst, const Message *msg) {
     local_id src = *(local_id *) self;

@@ -40,7 +40,7 @@ extern FILE * EventsLog;
 void openLog();
 void closeLog();
 
-void logEvent(LogFormat format, local_id src, local_id dst, balance_t balance);
-void logPipe(PipeFormat format, local_id src, local_id dst, int size);
+void logEvent(LogFormat format, local_id src, local_id dst, balance_t balance, timestamp_t time);
+void logPipe(PipeFormat format, local_id src, local_id dst, int size, timestamp_t time);
 
 #endif //PA2_LOG_H

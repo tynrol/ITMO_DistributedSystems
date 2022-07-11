@@ -29,7 +29,7 @@ void init(int process_count, balance_t balance[]) {
             id = (local_id) i;
             current = pid;
             initHistory();
-            logEvent(LOG_STARTED, id, id_parent, current_amount);
+            logEvent(LOG_STARTED, id, id_parent, current_amount, time_clock);
             break;
         }
     }
@@ -71,12 +71,16 @@ void start() {
             } else if (error == 1) {
                 i--;
             }
+            if (error == 0 && received.s_header.s_type == STARTED) {
+                update_time(received.s_header.s_local_time);
+            }
         }
     }
+    started.s_header.s_local_time = get_lamport_time();
     if (current != parent) {
         send(&id, 0, &started);
     }
-    logEvent(LOG_ALL_STARTED, id, id_parent, current_amount);
+    logEvent(LOG_ALL_STARTED, id, id_parent, current_amount,started.s_header.s_local_time );
 }
 
 void work() {
@@ -86,7 +90,6 @@ void work() {
         send_multicast(&id, &stop);
     } else {
         Message received;
-        Message ack = createMessage(MESSAGE_MAGIC, id, id_parent, current_amount, ACK);
         TransferOrder order;
         int error;
         int exit = 0;
@@ -96,17 +99,20 @@ void work() {
                 switch (received.s_header.s_type) {
                     case STOP:
                         exit = 1;
-                        addToHistory(received.s_header.s_local_time, current_amount);
+                        update_time(received.s_header.s_local_time);
+                        addToHistory(get_lamport_time(), current_amount, 0);
                         break;
                     case TRANSFER:
                         memcpy(&order, received.s_payload, sizeof(TransferOrder));
                         if (order.s_dst == id) {
-                            timestamp_t time = get_physical_time();
-                            transaction_in(time, order.s_amount, order.s_src);
-                            ack.s_header.s_local_time = time;
+                            update_time(received.s_header.s_local_time);
+                            addToHistory(received.s_header.s_local_time, current_amount, order.s_amount);
+                            transaction_in(time_clock, order.s_amount, order.s_src);
+                            Message ack = createMessage(MESSAGE_MAGIC, id, id_parent, current_amount, ACK);
                             send(&id, id_parent, &ack);
                         } else if (order.s_src == id) {
-                            timestamp_t time = get_physical_time();
+                            update_time(received.s_header.s_local_time);
+                            timestamp_t time = get_lamport_time();
                             transaction_out(time, order.s_amount, order.s_dst);
                             received.s_header.s_local_time = time;
                             send(&id, order.s_dst, &received);
@@ -116,7 +122,7 @@ void work() {
             }
         }
     }
-    logEvent(LOG_ALL_DONE, id, id_parent, current_amount);
+    logEvent(LOG_ALL_DONE, id, id_parent, current_amount, time_clock);
 }
 
 void end() {
@@ -128,11 +134,17 @@ void end() {
     for (local_id i = 1; i <= process_count; i++) {
         if (i != id) {
             int error = receive(&id, i, &received);
-            if (error == 1 || received.s_header.s_type != DONE) {
+            if (error == 1) {
                 i--;
+            } else if (error == 0 && received.s_header.s_type != DONE){
+                i--;
+                update_time(received.s_header.s_local_time);
+            }
+            if (error == 0 || received.s_header.s_type == DONE) {
+                update_time(received.s_header.s_local_time);
             }
         }
     }
-    logEvent(LOG_ALL_DONE, id, id_parent, current_amount);
+    logEvent(LOG_ALL_DONE, id, id_parent, current_amount, received.s_header.s_local_time);
     showHistory();
 }

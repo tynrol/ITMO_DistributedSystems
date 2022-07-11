@@ -2,11 +2,7 @@
 #define PA4_QUEUE_H
 
 #include "pipes.h"
-
-//typedef enum {
-//    NONE = 0,
-//    RECEIVED
-//} r_status;
+#include "utils.h"
 
 typedef struct {
     local_id id;
@@ -14,7 +10,7 @@ typedef struct {
 } Info;
 
 typedef struct {
-    int queue_len;
+    int len;
     Info info[11];
     int replies[11];
     int done[11];
@@ -24,7 +20,7 @@ extern Queue queue;
 
 void initQueue();
 Info pop();
-void push(Info info);
 int compare(Info left, Info right);
+void push(Info new_info);
 
 #endif //PA4_QUEUE_H

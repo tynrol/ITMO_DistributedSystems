@@ -1,66 +1,77 @@
 #include "log.h"
 
-int fdEventsLog;
-int fdPipesLog;
+FILE *EventsLog = NULL;
+FILE *PipesLog = NULL;
 
-void openLogEvent() {
-    fdEventsLog = open(events_log, O_WRONLY | O_APPEND | O_CREAT | O_TRUNC, 0760);
+void openLog() {
+    EventsLog = fopen(events_log, "w");
+    PipesLog = fopen(pipes_log, "w");
 }
 
-void openLogPipe() {
-    fdPipesLog = open(pipes_log, O_WRONLY | O_APPEND | O_CREAT | O_TRUNC, 0760);
+void closeLog() {
+    fclose(EventsLog);
+    fclose(PipesLog);
 }
 
-void closeLogEvent() {
-    close(fdEventsLog);
-}
-
-void closeLogPipe() {
-    close(fdPipesLog);
-}
-
-char *logEvent(EventStatus status, local_id id, balance_t balance, timestamp_t timestamp, local_id foreign_id) {
-    char *buf = (char *) malloc(sizeof(char) * 255);
-
-    switch (status) {
-        case EVENT_STARTED:
-            sprintf(buf, log_started_fmt, timestamp, id, getpid(), getppid(), balance);
+void logEvent(LogFormat format, local_id src, local_id dst, balance_t balance) {
+    switch (format) {
+        case LOG_STARTED:
+            fprintf(EventsLog, log_started_fmt, get_physical_time(), src, getpid(), getppid(), balance);
             break;
-        case EVENT_RECV_ALL_STARTED:
-            sprintf(buf, log_received_all_started_fmt, timestamp, id);
+        case LOG_DONE:
+            fprintf(EventsLog, log_done_fmt, get_physical_time(), src, balance);
             break;
-        case EVENT_DONE:
-            sprintf(buf, log_done_fmt, timestamp, id, balance);
+        case LOG_ALL_STARTED:
+            fprintf(EventsLog, log_received_all_started_fmt, get_physical_time(), src);
             break;
-        case EVENT_RECV_ALL_DONE:
-            sprintf(buf, log_received_all_done_fmt, timestamp, id);
+        case LOG_ALL_DONE:
+            fprintf(EventsLog, log_received_all_done_fmt, get_physical_time(), src);
             break;
-        case EVENT_TRANSFER_IN:
-            sprintf(buf, log_transfer_in_fmt, timestamp, id, balance, foreign_id);
+        case LOG_TRANSFER_IN:
+            fprintf(EventsLog, log_transfer_in_fmt, get_physical_time(), src, balance, dst);
             break;
-        case EVENT_TRANSFER_OUT:
-            sprintf(buf, log_transfer_out_fmt, timestamp, id, balance, foreign_id);
+        case LOG_TRANSFER_OUT:
+            fprintf(EventsLog, log_transfer_out_fmt, get_physical_time(), src, balance, dst);
             break;
-        case EVENT_STOP:
-            printf("%d: process %d requested stop\n", timestamp, id);
+        case LOG_LOOP:
+            fprintf(EventsLog, log_loop_operation_fmt, src, 1, 666);
+            break;
+        case LOG_STOP:
+            fprintf(EventsLog, "%d: process %d requested stop\n", get_physical_time(), src);
+            break;
+        case LOG_ACK:
+            fprintf(EventsLog, "%d: process %d ack from %d\n", get_physical_time(), src, dst);
+            break;
+        case LOG_COPIED:
+            fprintf(EventsLog, "%d: process %d copied history\n", get_physical_time(), src);
             break;
     }
 
-    printf(buf, 0);
-    write(fdEventsLog, buf, strlen(buf));
-    return buf;
+    fflush(EventsLog);
 }
 
-//void logPipe(PipeStatus status, local_id id, int from, int to, int descriptor){
-//    char buf[100];
-//
-//    switch (status) {
-//        case OPEN:
-//            sprintf(buf, pipe_opend_msg, id, from, to, descriptor);
-//            break;
-//        case CLOSED:
-//            sprintf(buf, pipe_closed_msg, id, from, to, descriptor);
-//            break;
-//    }
-//    write(fdPipesLog, buf, 100);
-//}
+void logPipe(PipeFormat format, local_id src, local_id dst, int size){
+    switch (format) {
+        case PIPE_STARTED:
+            fprintf(PipesLog, "%d: pipe %i -> %i started\n", get_physical_time(), src, dst);
+            fflush(PipesLog);
+        case PIPE_FAIL:
+            fprintf(PipesLog, "%d: pipe %i -> %i failed\n", get_physical_time(), src, dst);
+        case PIPE_FAIL_NONBLOCK:
+            fprintf(PipesLog, "%d: pipe %i -> %i failed nonblock state\n", get_physical_time(), src, dst);
+        case PIPE_SEND:
+            fprintf(PipesLog,  "%d: process %1d send %2d bytes to process %1d\n" , get_physical_time(), src, size, dst);
+            fflush(PipesLog);
+            break;
+        case PIPE_RECEIVE:
+            fprintf(PipesLog,  "%d: process %1d received %2d bytes from process %1d\n" , get_physical_time(), src, size, dst);
+            fflush(PipesLog);
+            break;
+        case PIPE_ERROR:
+            fprintf(PipesLog,  "%d: process %1d has error %d\n" , get_physical_time(), src, size);
+            break;
+        case PIPE_READ_AGAIN:
+            fprintf(PipesLog,  "%d: process %1d has to read again %d\n" , get_physical_time(), src, size);
+            break;
+    }
+}

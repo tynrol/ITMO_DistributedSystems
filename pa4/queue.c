@@ -3,7 +3,7 @@
 Queue queue;
 
 void initQueue() {
-    queue.queue_len = 0;
+    queue.len = 0;
     queue.info->id = 0;
     queue.info->time = time_clock;
     for (int i = 0; i<11;i++) {
@@ -13,23 +13,24 @@ void initQueue() {
 }
 
 Info pop() {
-    if (queue.queue_len > 0) {
-        if (queue.queue_len == 1) {
-            queue.queue_len--;
+    if (queue.len > 0) {
+        if (queue.len == 1) {
+            queue.len--;
             return queue.info[0];
         } else {
             Info value = queue.info[0];
-            for (int i = 1; i < queue.queue_len; i++) {
+            for (int i = 1; i < queue.len; i++) {
                 queue.info[i - 1] = queue.info[i];
             }
-            queue.queue_len--;
+            queue.len--;
             return value;
         }
+    } else {
+        Info info;
+        info.time = -1;
+        info.id = -1;
+        return info;
     }
-    Info info;
-    info.time = -1;
-    info.id = -1;
-    return info;
 }
 
 int compare(Info left, Info right) {
@@ -51,20 +52,20 @@ int compare(Info left, Info right) {
 }
 
 void push(Info new_info) {
-    if (queue.queue_len == 0) {
-        queue.queue_len++;
+    if (queue.len == 0) {
+        queue.len++;
         queue.info[0] = new_info;
         return;
     }
-    int insert_pos = queue.queue_len;
-    for (int i = 0; i < queue.queue_len; i++) {
+    int insert_pos = queue.len;
+    for (int i = 0; i < queue.len; i++) {
         if (compare(new_info, queue.info[i]) < 1) {
             insert_pos = i;
         }
     }
-    for (int i = queue.queue_len - 1; i >= insert_pos; i--) {
+    for (int i = queue.len - 1; i >= insert_pos; i--) {
         queue.info[i + 1] = queue.info[i];
     }
     queue.info[insert_pos] = new_info;
-    queue.queue_len++;
+    queue.len++;
 }
